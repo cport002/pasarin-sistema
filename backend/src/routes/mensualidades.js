@@ -104,6 +104,20 @@ router.post('/enviar-alertas', autenticar, autorizar('admin'), async (req, res) 
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// POST /api/mensualidades/test-email — envia un correo de prueba, sin tocar alumnos ni mensualidades
+router.post('/test-email', autenticar, autorizar('admin'), async (req, res) => {
+  try {
+    const { to } = req.body;
+    if (!to) return res.status(400).json({ error: 'Falta el destinatario (to)' });
+    const resultado = await enviarCorreo({
+      to,
+      subject: 'Correo de prueba — CIA PASARIN',
+      html: '<p>Este es un correo de prueba del sistema de control de mensualidades de CIA PASARIN. Si lo recibiste, Resend esta funcionando correctamente.</p>'
+    });
+    res.json(resultado);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // PATCH /api/mensualidades/:id/pagar  { metodo_pago, fecha_pago, notas }
 router.patch('/:id/pagar', autenticar, autorizar('admin', 'secretaria'), async (req, res) => {
   try {
