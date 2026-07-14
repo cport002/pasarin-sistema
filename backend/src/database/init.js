@@ -56,6 +56,13 @@ async function initDatabase() {
     }
     if (sinToken.rows.length) console.log(`Tokens generados para ${sinToken.rows.length} alumno(s) existentes.`);
 
+    // Migracion: agregar 'en_revision' al CHECK de mensualidades.estado si no estaba
+    await client.query(`
+      ALTER TABLE mensualidades DROP CONSTRAINT IF EXISTS mensualidades_estado_check;
+      ALTER TABLE mensualidades ADD CONSTRAINT mensualidades_estado_check
+        CHECK (estado IN ('pendiente','pagado','vencido','anulado','en_revision'));
+    `);
+
     console.log('Base de datos PostgreSQL lista');
   } finally {
     client.release();

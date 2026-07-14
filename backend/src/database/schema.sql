@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS mensualidades (
   periodo_mes INTEGER NOT NULL CHECK(periodo_mes BETWEEN 1 AND 12),
   periodo_anio INTEGER NOT NULL,
   monto NUMERIC NOT NULL DEFAULT 0,
-  estado TEXT NOT NULL DEFAULT 'pendiente' CHECK(estado IN ('pendiente','pagado','vencido','anulado')),
+  estado TEXT NOT NULL DEFAULT 'pendiente' CHECK(estado IN ('pendiente','pagado','vencido','anulado','en_revision')),
   metodo_pago TEXT CHECK(metodo_pago IN ('transferencia','efectivo')),
   fecha_vencimiento DATE NOT NULL,
   fecha_pago DATE,

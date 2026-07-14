@@ -154,8 +154,13 @@ router.post('/:id/comprobante', autenticar, autorizar('admin', 'secretaria'), up
     if (!m) return res.status(404).json({ error: 'Mensualidad no encontrada' });
 
     const url = `/uploads/${req.file.filename}`;
-    await sql("UPDATE mensualidades SET comprobante_url = ?, updated_at = NOW() WHERE id = ?", [url, req.params.id]);
-    registrarAuditoria('mensualidades', req.params.id, 'UPDATE', null, { comprobante_url: url }, req.usuario.id, req.ip, 'Comprobante subido');
+    await sql(
+      `UPDATE mensualidades SET comprobante_url = ?, updated_at = NOW(),
+        estado = CASE WHEN estado IN ('pendiente','vencido') THEN 'en_revision' ELSE estado END
+       WHERE id = ?`,
+      [url, req.params.id]
+    );
+    registrarAuditoria('mensualidades', req.params.id, 'UPDATE', null, { comprobante_url: url, estado: 'en_revision' }, req.usuario.id, req.ip, 'Comprobante subido');
 
     if (m.alumno_email) {
       const { subject, html } = plantillaComprobanteRecibido({

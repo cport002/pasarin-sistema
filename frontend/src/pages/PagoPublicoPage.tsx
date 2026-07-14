@@ -107,7 +107,9 @@ export default function PagoPublicoPage() {
                     <p className="font-semibold text-gray-900">{MESES[m.periodo_mes - 1]} {m.periodo_anio}</p>
                     <p className="text-xs text-gray-400">Vence {fmt.fecha(m.fecha_vencimiento)}</p>
                   </div>
-                  <span className={m.estado === 'vencido' ? 'badge-red' : 'badge-yellow'}>{m.estado}</span>
+                  <span className={m.estado === 'vencido' ? 'badge-red' : m.estado === 'en_revision' ? 'badge-blue' : 'badge-yellow'}>
+                    {m.estado === 'en_revision' ? 'en revisión' : m.estado}
+                  </span>
                 </div>
                 <p className="text-2xl font-bold text-gray-900 mt-3">{fmt.clp(m.monto)}</p>
 

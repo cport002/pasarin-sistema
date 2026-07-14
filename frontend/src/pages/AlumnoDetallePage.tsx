@@ -8,7 +8,7 @@ import { ArrowLeft, Star, Edit2, CheckCircle2, XCircle, Upload, Paperclip, Link2
 import PageHeader from '../components/ui/PageHeader'
 
 const estadoBadge: Record<string, string> = {
-  pendiente: 'badge-yellow', pagado: 'badge-green', vencido: 'badge-red', anulado: 'badge-gray'
+  pendiente: 'badge-yellow', pagado: 'badge-green', vencido: 'badge-red', anulado: 'badge-gray', en_revision: 'badge-blue'
 }
 
 export default function AlumnoDetallePage() {

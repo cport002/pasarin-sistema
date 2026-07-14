@@ -50,7 +50,7 @@ export interface Mensualidad {
   periodo_mes: number
   periodo_anio: number
   monto: number
-  estado: 'pendiente' | 'pagado' | 'vencido' | 'anulado'
+  estado: 'pendiente' | 'pagado' | 'vencido' | 'anulado' | 'en_revision'
   metodo_pago?: 'transferencia' | 'efectivo' | null
   fecha_vencimiento: string
   fecha_pago?: string | null

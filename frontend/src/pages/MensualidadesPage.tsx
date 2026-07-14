@@ -8,7 +8,7 @@ import { Wallet, RefreshCw, Mail, CheckCircle2, XCircle } from 'lucide-react'
 import PageHeader from '../components/ui/PageHeader'
 
 const estadoBadge: Record<string, string> = {
-  pendiente: 'badge-yellow', pagado: 'badge-green', vencido: 'badge-red', anulado: 'badge-gray'
+  pendiente: 'badge-yellow', pagado: 'badge-green', vencido: 'badge-red', anulado: 'badge-gray', en_revision: 'badge-blue'
 }
 
 const hoy = new Date()
@@ -123,6 +123,7 @@ export default function MensualidadesPage() {
         <select className="input sm:w-40" value={estado} onChange={e => setEstado(e.target.value)}>
           <option value="">Todos los estados</option>
           <option value="pendiente">Pendiente</option>
+          <option value="en_revision">En revisión</option>
           <option value="pagado">Pagado</option>
           <option value="vencido">Vencido</option>
           <option value="anulado">Anulado</option>

@@ -33,7 +33,7 @@ router.get('/alumno/:token', async (req, res) => {
 
     const mensualidades = (await sql(
       `SELECT id, periodo_mes, periodo_anio, monto, estado, fecha_vencimiento, comprobante_url
-       FROM mensualidades WHERE alumno_id = ? AND estado IN ('pendiente','vencido')
+       FROM mensualidades WHERE alumno_id = ? AND estado IN ('pendiente','vencido','en_revision')
        ORDER BY periodo_anio, periodo_mes`,
       [alumno.id]
     )).rows;
@@ -56,8 +56,13 @@ router.post('/alumno/:token/mensualidad/:mensualidadId/comprobante', upload.sing
     if (!req.file) return res.status(400).json({ error: 'Archivo requerido' });
 
     const url = `/uploads/${req.file.filename}`;
-    await sql("UPDATE mensualidades SET comprobante_url = ?, updated_at = NOW() WHERE id = ?", [url, m.id]);
-    registrarAuditoria('mensualidades', m.id, 'UPDATE', null, { comprobante_url: url }, null, req.ip, `Comprobante subido por el propio alumno/apoderado (${alumno.nombre} ${alumno.apellido})`);
+    await sql(
+      `UPDATE mensualidades SET comprobante_url = ?, updated_at = NOW(),
+        estado = CASE WHEN estado IN ('pendiente','vencido') THEN 'en_revision' ELSE estado END
+       WHERE id = ?`,
+      [url, m.id]
+    );
+    registrarAuditoria('mensualidades', m.id, 'UPDATE', null, { comprobante_url: url, estado: 'en_revision' }, null, req.ip, `Comprobante subido por el propio alumno/apoderado (${alumno.nombre} ${alumno.apellido})`);
 
     if (alumno.email) {
       const { subject, html } = plantillaComprobanteRecibido({
