@@ -3,7 +3,6 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const path = require('path');
 
 const { initDatabase } = require('./database/init');
 const authRoutes = require('./routes/auth');
@@ -54,7 +53,6 @@ app.use('/api/configuracion', configuracionRoutes);
 app.use('/api/auditoria', auditoriaRoutes);
 app.use('/api/public', publicRoutes);
 
-app.use('/uploads', express.static(path.join(__dirname, '../data/uploads')));
 app.get('/api/health', (req, res) => res.json({ status: 'ok', version: '1.0.0', timestamp: new Date().toISOString() }));
 
 async function startServer() {

@@ -1,24 +1,10 @@
 const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const { sql } = require('../database/db');
 const { registrarAuditoria } = require('../middleware/auth');
 const { enviarCorreo, plantillaComprobanteRecibido } = require('../services/email');
+const { upload } = require('../services/upload');
 
 const router = express.Router();
-
-const uploadsDir = path.join(__dirname, '../../data/uploads');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadsDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `comprobante_pub_${req.params.mensualidadId}_${Date.now()}${ext}`);
-  }
-});
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 // GET /api/public/alumno/:token — info del alumno + sus mensualidades pendientes/vencidas + datos bancarios
 router.get('/alumno/:token', async (req, res) => {
@@ -55,7 +41,7 @@ router.post('/alumno/:token/mensualidad/:mensualidadId/comprobante', upload.sing
     if (!m) return res.status(404).json({ error: 'Mensualidad no encontrada' });
     if (!req.file) return res.status(400).json({ error: 'Archivo requerido' });
 
-    const url = `/uploads/${req.file.filename}`;
+    const url = req.file.path;
     await sql(
       `UPDATE mensualidades SET comprobante_url = ?, updated_at = NOW(),
         estado = CASE WHEN estado IN ('pendiente','vencido') THEN 'en_revision' ELSE estado END

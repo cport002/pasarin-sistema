@@ -5,9 +5,11 @@ const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
   : '/api'
 
-// Los archivos subidos (comprobantes) se sirven desde el backend, no desde el sitio estatico del frontend
+// Los comprobantes se guardan en Cloudinary (URL absoluta). Si viniera un path relativo antiguo,
+// se arma apuntando al backend en vez del sitio estatico del frontend.
 export function archivoUrl(path?: string | null) {
   if (!path) return ''
+  if (path.startsWith('http://') || path.startsWith('https://')) return path
   return `${API_ORIGIN}${path}`
 }
 

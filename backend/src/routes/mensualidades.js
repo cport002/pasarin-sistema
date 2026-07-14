@@ -1,26 +1,12 @@
 const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const { sql } = require('../database/db');
 const { autenticar, autorizar, registrarAuditoria } = require('../middleware/auth');
 const { generarMensualidadesPeriodo, actualizarVencidas } = require('../services/mensualidades');
 const { ejecutarJobDiario } = require('../services/alertas');
 const { enviarCorreo, plantillaComprobanteRecibido } = require('../services/email');
+const { upload } = require('../services/upload');
 
 const router = express.Router();
-
-const uploadsDir = path.join(__dirname, '../../data/uploads');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadsDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `comprobante_${req.params.id}_${Date.now()}${ext}`);
-  }
-});
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 // GET /api/mensualidades?mes=&anio=&estado=&categoria_id=
 router.get('/', autenticar, async (req, res) => {
@@ -153,7 +139,7 @@ router.post('/:id/comprobante', autenticar, autorizar('admin', 'secretaria'), up
     `, [req.params.id])).rows[0];
     if (!m) return res.status(404).json({ error: 'Mensualidad no encontrada' });
 
-    const url = `/uploads/${req.file.filename}`;
+    const url = req.file.path;
     await sql(
       `UPDATE mensualidades SET comprobante_url = ?, updated_at = NOW(),
         estado = CASE WHEN estado IN ('pendiente','vencido') THEN 'en_revision' ELSE estado END
