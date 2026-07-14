@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import api, { fmt, MESES } from '../services/api'
+import api, { fmt, MESES, archivoUrl } from '../services/api'
 import type { Alumno, Categoria, Mensualidad } from '../types'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
@@ -193,7 +193,7 @@ export default function AlumnoDetallePage() {
                   <td className="table-cell text-center"><span className={estadoBadge[m.estado]}>{m.estado}</span></td>
                   <td className="table-cell">
                     {m.comprobante_url ? (
-                      <a href={m.comprobante_url} target="_blank" rel="noreferrer" className="text-purple-600 hover:underline flex items-center gap-1">
+                      <a href={archivoUrl(m.comprobante_url)} target="_blank" rel="noreferrer" className="text-purple-600 hover:underline flex items-center gap-1">
                         <Paperclip className="w-3.5 h-3.5" /> Ver
                       </a>
                     ) : <span className="text-gray-300">-</span>}

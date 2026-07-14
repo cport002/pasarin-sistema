@@ -1,8 +1,15 @@
 import axios from 'axios'
 
+const API_ORIGIN = import.meta.env.VITE_API_URL || ''
 const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
   : '/api'
+
+// Los archivos subidos (comprobantes) se sirven desde el backend, no desde el sitio estatico del frontend
+export function archivoUrl(path?: string | null) {
+  if (!path) return ''
+  return `${API_ORIGIN}${path}`
+}
 
 const api = axios.create({ baseURL: API_BASE })
 
