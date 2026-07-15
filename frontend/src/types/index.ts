@@ -65,6 +65,7 @@ export interface ResumenMensual {
   anio: number
   total: number
   pendientes: number
+  en_revision: number
   pagadas: number
   vencidas: number
   monto_por_cobrar: number

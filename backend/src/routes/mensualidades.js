@@ -42,6 +42,7 @@ router.get('/resumen', autenticar, async (req, res) => {
       SELECT
         COUNT(*) AS total,
         SUM(CASE WHEN estado = 'pendiente' THEN 1 ELSE 0 END) AS pendientes,
+        SUM(CASE WHEN estado = 'en_revision' THEN 1 ELSE 0 END) AS en_revision,
         SUM(CASE WHEN estado = 'pagado' THEN 1 ELSE 0 END) AS pagadas,
         SUM(CASE WHEN estado = 'vencido' THEN 1 ELSE 0 END) AS vencidas,
         SUM(CASE WHEN estado IN ('pendiente','vencido') THEN monto ELSE 0 END) AS monto_por_cobrar,
