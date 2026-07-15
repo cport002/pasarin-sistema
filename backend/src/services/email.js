@@ -87,4 +87,12 @@ function plantillaComprobanteRecibido({ alumnoNombre, mes, anio }) {
   };
 }
 
-module.exports = { enviarCorreo, plantillaAvisoPrevio, plantillaVencido, plantillaComprobanteRecibido };
+function plantillaPagoConfirmado({ alumnoNombre, mes, anio, monto }) {
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  return {
+    subject: `Pago confirmado — mensualidad de ${meses[mes - 1]}`,
+    html: `<p>Hola ${alumnoNombre},</p><p>Confirmamos que tu pago de la mensualidad de <strong>${meses[mes - 1]} ${anio}</strong> (${formatoCLP(monto)}) fue registrado correctamente. ¡Gracias!</p>`
+  };
+}
+
+module.exports = { enviarCorreo, plantillaAvisoPrevio, plantillaVencido, plantillaComprobanteRecibido, plantillaPagoConfirmado };
