@@ -6,28 +6,32 @@ const { upload } = require('../services/upload');
 
 const router = express.Router();
 
-// GET /api/public/alumno/:token — info del alumno + sus mensualidades pendientes/vencidas + datos bancarios
+// GET /api/public/alumno/:token — info del alumno + mensualidades del año en curso + datos bancarios
 router.get('/alumno/:token', async (req, res) => {
   try {
     const alumno = (await sql(
-      `SELECT a.id, a.nombre, a.apellido, c.nombre AS categoria_nombre
+      `SELECT a.id, a.nombre, a.apellido, a.foto_url, c.nombre AS categoria_nombre
        FROM alumnos a LEFT JOIN categorias c ON c.id = a.categoria_id
        WHERE a.token = ?`,
       [req.params.token]
     )).rows[0];
     if (!alumno) return res.status(404).json({ error: 'Link no válido' });
 
+    const hoy = new Date();
+    const anio_actual = hoy.getFullYear();
+    const mes_actual = hoy.getMonth() + 1;
+
     const mensualidades = (await sql(
       `SELECT id, periodo_mes, periodo_anio, monto, estado, fecha_vencimiento, comprobante_url
-       FROM mensualidades WHERE alumno_id = ? AND estado IN ('pendiente','vencido','en_revision')
-       ORDER BY periodo_anio, periodo_mes`,
-      [alumno.id]
+       FROM mensualidades WHERE alumno_id = ? AND periodo_anio = ?
+       ORDER BY periodo_mes`,
+      [alumno.id, anio_actual]
     )).rows;
 
     const configRows = (await sql("SELECT valor FROM configuracion WHERE clave = 'datos_bancarios'")).rows;
     const datos_bancarios = JSON.parse(configRows[0]?.valor || '{}');
 
-    res.json({ alumno, mensualidades, datos_bancarios });
+    res.json({ alumno, mensualidades, anio_actual, mes_actual, datos_bancarios });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

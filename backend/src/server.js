@@ -55,6 +55,14 @@ app.use('/api/public', publicRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', version: '1.0.0', timestamp: new Date().toISOString() }));
 
+app.use((err, req, res, next) => {
+  if (err?.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ error: 'El archivo supera el tamaño máximo permitido.' });
+  }
+  console.error(err);
+  res.status(500).json({ error: 'Error interno del servidor' });
+});
+
 async function startServer() {
   await initDatabase();
   iniciarJobAlertas();

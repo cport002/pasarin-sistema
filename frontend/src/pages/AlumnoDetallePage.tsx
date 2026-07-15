@@ -4,7 +4,7 @@ import api, { fmt, MESES, archivoUrl } from '../services/api'
 import type { Alumno, Categoria, Mensualidad } from '../types'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Star, Edit2, CheckCircle2, XCircle, Upload, Paperclip, Link2 } from 'lucide-react'
+import { ArrowLeft, Star, Edit2, CheckCircle2, XCircle, Upload, Paperclip, Link2, Camera } from 'lucide-react'
 import PageHeader from '../components/ui/PageHeader'
 
 const estadoBadge: Record<string, string> = {
@@ -23,7 +23,9 @@ export default function AlumnoDetallePage() {
   const [pagando, setPagando] = useState<Mensualidad | null>(null)
   const [metodoPago, setMetodoPago] = useState('transferencia')
   const [form, setForm] = useState<any>(null)
+  const [subiendoFoto, setSubiendoFoto] = useState(false)
   const fileInputs = useRef<Record<number, HTMLInputElement | null>>({})
+  const fotoInputRef = useRef<HTMLInputElement | null>(null)
 
   const cargar = () => {
     Promise.all([
@@ -105,6 +107,21 @@ export default function AlumnoDetallePage() {
     }
   }
 
+  const subirFoto = async (file: File) => {
+    setSubiendoFoto(true)
+    const data = new FormData()
+    data.append('foto', file)
+    try {
+      await api.post(`/alumnos/${id}/foto`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
+      toast.success('Foto actualizada')
+      cargar()
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Error al subir la foto')
+    } finally {
+      setSubiendoFoto(false)
+    }
+  }
+
   const subirComprobante = async (m: Mensualidad, file: File) => {
     const data = new FormData()
     data.append('archivo', file)
@@ -148,6 +165,27 @@ export default function AlumnoDetallePage() {
         }
       />
 
+      <div className="flex items-center gap-4">
+        <div className="relative shrink-0">
+          {alumno.foto_url ? (
+            <img src={alumno.foto_url} alt={`${alumno.nombre} ${alumno.apellido}`} className="w-16 h-16 rounded-full object-cover border border-gray-200" />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-lg">
+              {alumno.nombre[0]}{alumno.apellido?.[0] || ''}
+            </div>
+          )}
+          {puedeEditar && (
+            <button onClick={() => fotoInputRef.current?.click()} disabled={subiendoFoto} title="Cambiar foto"
+              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center shadow hover:bg-purple-700 transition-colors disabled:opacity-50">
+              <Camera className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <input ref={fotoInputRef} type="file" accept="image/*" className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) subirFoto(f); e.target.value = '' }} />
+        </div>
+        {puedeEditar && <p className="text-xs text-gray-400">Foto de perfil — máx. 2MB</p>}
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
         <div className="card p-4">
           <p className="text-xs text-gray-400 mb-1">Mensualidad</p>
@@ -171,7 +209,10 @@ export default function AlumnoDetallePage() {
       </div>
 
       <div className="card p-0 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100"><h3>Historial de mensualidades</h3></div>
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-2 flex-wrap">
+          <h3>Historial de mensualidades</h3>
+          {puedeEditar && <p className="text-xs text-gray-400">Comprobante: máx. 5MB, imagen o PDF</p>}
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">

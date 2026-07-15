@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import api, { fmt, MESES } from '../services/api'
 import toast from 'react-hot-toast'
-import { Upload, CheckCircle2, Building2 } from 'lucide-react'
+import { Upload, CheckCircle2, Clock, AlertTriangle, Building2 } from 'lucide-react'
 
 interface Mensualidad {
   id: number
@@ -22,10 +22,22 @@ interface DatosBancarios {
   nombre?: string
 }
 
+type EstadoMes = 'pagado' | 'en_revision' | 'activo_actual' | 'activo_vencido' | 'bloqueado'
+
+const estiloMes: Record<EstadoMes, string> = {
+  pagado: 'bg-emerald-500/10 text-emerald-700 border border-emerald-200',
+  en_revision: 'bg-blue-500/10 text-blue-600 border border-blue-200',
+  activo_actual: 'bg-purple-600 text-white border border-purple-600 shadow-sm cursor-pointer hover:bg-purple-700',
+  activo_vencido: 'bg-red-500/10 text-red-600 border border-red-200 cursor-pointer hover:bg-red-500/20',
+  bloqueado: 'bg-gray-100 text-gray-300 border border-gray-100'
+}
+
 export default function PagoPublicoPage() {
   const { token } = useParams()
-  const [alumno, setAlumno] = useState<{ nombre: string; apellido: string; categoria_nombre?: string } | null>(null)
+  const [alumno, setAlumno] = useState<{ nombre: string; apellido: string; categoria_nombre?: string; foto_url?: string | null } | null>(null)
   const [mensualidades, setMensualidades] = useState<Mensualidad[]>([])
+  const [mesActual, setMesActual] = useState(new Date().getMonth() + 1)
+  const [anioActual, setAnioActual] = useState(new Date().getFullYear())
   const [datosBancarios, setDatosBancarios] = useState<DatosBancarios>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -36,6 +48,8 @@ export default function PagoPublicoPage() {
     api.get(`/public/alumno/${token}`).then(r => {
       setAlumno(r.data.alumno)
       setMensualidades(r.data.mensualidades)
+      setMesActual(r.data.mes_actual)
+      setAnioActual(r.data.anio_actual)
       setDatosBancarios(r.data.datos_bancarios || {})
       setLoading(false)
     }).catch(err => {
@@ -75,11 +89,33 @@ export default function PagoPublicoPage() {
     )
   }
 
+  const porMes = new Map(mensualidades.map(m => [m.periodo_mes, m]))
+  const meses = Array.from({ length: 12 }, (_, i) => {
+    const mes = i + 1
+    const row = porMes.get(mes)
+    let estado: EstadoMes = 'bloqueado'
+    if (row) {
+      if (row.estado === 'pagado') estado = 'pagado'
+      else if (row.estado === 'en_revision') estado = 'en_revision'
+      else if ((row.estado === 'pendiente' || row.estado === 'vencido') && mes <= mesActual) {
+        estado = mes === mesActual ? 'activo_actual' : 'activo_vencido'
+      }
+    }
+    return { mes, row, estado }
+  })
+
+  const activos = meses.filter(m => m.estado === 'activo_actual' || m.estado === 'activo_vencido')
+  const totalAdeudado = activos.reduce((s, m) => s + (m.row?.monto || 0), 0)
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center py-10 px-4">
       <div className="w-full max-w-md space-y-6">
         <div className="flex items-center gap-3 justify-center">
-          <img src="/logo-pasarin.jpg" alt="CIA PASARIN" className="w-10 h-10 rounded-xl object-cover" />
+          {alumno.foto_url ? (
+            <img src={alumno.foto_url} alt={`${alumno.nombre} ${alumno.apellido}`} className="w-10 h-10 rounded-xl object-cover" />
+          ) : (
+            <img src="/logo-pasarin.jpg" alt="CIA PASARIN" className="w-10 h-10 rounded-xl object-cover" />
+          )}
           <div>
             <p className="font-bold text-gray-900">CIA PASARIN</p>
             <p className="text-xs text-gray-400">Pago de mensualidad</p>
@@ -92,66 +128,76 @@ export default function PagoPublicoPage() {
           {alumno.categoria_nombre && <p className="text-sm text-gray-500 mt-0.5">{alumno.categoria_nombre}</p>}
         </div>
 
-        {mensualidades.length === 0 ? (
+        {activos.length === 0 ? (
           <div className="card text-center py-8">
             <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
             <p className="text-gray-700 font-medium">Estás al día</p>
             <p className="text-gray-400 text-sm mt-1">No tienes mensualidades pendientes.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {mensualidades.map(m => (
-              <div key={m.id} className="card">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-gray-900">{MESES[m.periodo_mes - 1]} {m.periodo_anio}</p>
-                    <p className="text-xs text-gray-400">Vence {fmt.fecha(m.fecha_vencimiento)}</p>
-                  </div>
-                  <span className={m.estado === 'vencido' ? 'badge-red' : m.estado === 'en_revision' ? 'badge-blue' : 'badge-yellow'}>
-                    {m.estado === 'en_revision' ? 'en revisión' : m.estado}
-                  </span>
-                </div>
-                <p className="text-2xl font-bold text-gray-900 mt-3">{fmt.clp(m.monto)}</p>
+          <div className="card text-center py-5 bg-amber-50 border-amber-200">
+            <AlertTriangle className="w-6 h-6 mx-auto mb-2 text-amber-600" />
+            <p className="text-gray-800 font-semibold">{activos.length} mes{activos.length > 1 ? 'es' : ''} pendiente{activos.length > 1 ? 's' : ''}</p>
+            <p className="text-lg font-bold text-gray-900 mt-1">{fmt.clp(totalAdeudado)}</p>
+          </div>
+        )}
 
-                {m.comprobante_url ? (
-                  <p className="text-sm text-emerald-600 mt-3 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4" /> Comprobante enviado, en revisión
-                  </p>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => fileInputs.current[m.id]?.click()}
-                      disabled={subiendoId === m.id}
-                      className="btn-primary w-full mt-3 flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      <Upload className="w-4 h-4" />
-                      {subiendoId === m.id ? 'Subiendo...' : 'Ya transferí — subir comprobante'}
-                    </button>
+        <div className="card">
+          <div className="flex items-center justify-between mb-3">
+            <h3>Año {anioActual}</h3>
+            <p className="text-xs text-gray-400">Toca un mes destacado para pagar</p>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {meses.map(({ mes, row, estado }) => {
+              const clickable = estado === 'activo_actual' || estado === 'activo_vencido'
+              const subiendo = row && subiendoId === row.id
+              return (
+                <div key={mes}>
+                  <button
+                    type="button"
+                    disabled={!clickable || subiendo}
+                    onClick={() => clickable && row && fileInputs.current[row.id]?.click()}
+                    className={`w-full aspect-square rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-semibold transition-colors ${estiloMes[estado]} ${!clickable ? 'cursor-default' : ''}`}
+                  >
+                    <span>{MESES[mes - 1].slice(0, 3)}</span>
+                    {estado === 'pagado' && <CheckCircle2 className="w-3.5 h-3.5" />}
+                    {estado === 'en_revision' && <Clock className="w-3.5 h-3.5" />}
+                    {estado === 'activo_actual' && (subiendo ? <span className="text-[10px]">...</span> : <Upload className="w-3.5 h-3.5" />)}
+                    {estado === 'activo_vencido' && (subiendo ? <span className="text-[10px]">...</span> : <AlertTriangle className="w-3.5 h-3.5" />)}
+                  </button>
+                  {row && clickable && (
                     <input
-                      ref={el => { fileInputs.current[m.id] = el }}
+                      ref={el => { fileInputs.current[row.id] = el }}
                       type="file" accept="image/*,.pdf" className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (f) subirComprobante(m.id, f); e.target.value = '' }}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) subirComprobante(row.id, f); e.target.value = '' }}
                     />
-                  </>
-                )}
-              </div>
-            ))}
-
-            {datosBancarios.numero_cuenta && (
-              <div className="card">
-                <div className="flex items-center gap-2 mb-3">
-                  <Building2 className="w-4 h-4 text-purple-600" />
-                  <h3>Datos para transferencia</h3>
+                  )}
                 </div>
-                <dl className="text-sm space-y-1.5 text-gray-700">
-                  <div className="flex justify-between"><dt className="text-gray-400">Banco</dt><dd>{datosBancarios.banco}</dd></div>
-                  <div className="flex justify-between"><dt className="text-gray-400">Tipo de cuenta</dt><dd>{datosBancarios.tipo_cuenta}</dd></div>
-                  <div className="flex justify-between"><dt className="text-gray-400">N° de cuenta</dt><dd>{datosBancarios.numero_cuenta}</dd></div>
-                  <div className="flex justify-between"><dt className="text-gray-400">RUT</dt><dd>{datosBancarios.rut}</dd></div>
-                  <div className="flex justify-between"><dt className="text-gray-400">Nombre</dt><dd>{datosBancarios.nombre}</dd></div>
-                </dl>
-              </div>
-            )}
+              )
+            })}
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-4 text-[11px] text-gray-400">
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400" /> Pagado</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-400" /> En revisión</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-purple-600" /> Mes actual</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-400" /> Vencido</span>
+          </div>
+          <p className="text-[11px] text-gray-400 mt-3">Comprobante: máximo 5MB, imagen o PDF.</p>
+        </div>
+
+        {datosBancarios.numero_cuenta && activos.length > 0 && (
+          <div className="card">
+            <div className="flex items-center gap-2 mb-3">
+              <Building2 className="w-4 h-4 text-purple-600" />
+              <h3>Datos para transferencia</h3>
+            </div>
+            <dl className="text-sm space-y-1.5 text-gray-700">
+              <div className="flex justify-between"><dt className="text-gray-400">Banco</dt><dd>{datosBancarios.banco}</dd></div>
+              <div className="flex justify-between"><dt className="text-gray-400">Tipo de cuenta</dt><dd>{datosBancarios.tipo_cuenta}</dd></div>
+              <div className="flex justify-between"><dt className="text-gray-400">N° de cuenta</dt><dd>{datosBancarios.numero_cuenta}</dd></div>
+              <div className="flex justify-between"><dt className="text-gray-400">RUT</dt><dd>{datosBancarios.rut}</dd></div>
+              <div className="flex justify-between"><dt className="text-gray-400">Nombre</dt><dd>{datosBancarios.nombre}</dd></div>
+            </dl>
           </div>
         )}
 

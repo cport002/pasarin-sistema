@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const { sql } = require('../database/db');
 const { autenticar, autorizar, registrarAuditoria } = require('../middleware/auth');
+const { uploadFoto } = require('../services/upload');
 
 const router = express.Router();
 
@@ -101,6 +102,20 @@ router.put('/:id', autenticar, autorizar('admin', 'secretaria'), async (req, res
     );
     registrarAuditoria('alumnos', req.params.id, 'UPDATE', anterior, req.body, req.usuario.id, req.ip, 'Alumno actualizado');
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/alumnos/:id/foto — sube/reemplaza la foto de perfil
+router.post('/:id/foto', autenticar, autorizar('admin', 'secretaria'), uploadFoto.single('foto'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Archivo requerido' });
+    const anterior = (await sql('SELECT id FROM alumnos WHERE id = ?', [req.params.id])).rows[0];
+    if (!anterior) return res.status(404).json({ error: 'Alumno no encontrado' });
+
+    const url = req.file.path;
+    await sql('UPDATE alumnos SET foto_url = ?, updated_at = NOW() WHERE id = ?', [url, req.params.id]);
+    registrarAuditoria('alumnos', req.params.id, 'UPDATE', null, { foto_url: url }, req.usuario.id, req.ip, 'Foto de perfil actualizada');
+    res.json({ ok: true, foto_url: url });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

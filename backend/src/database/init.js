@@ -63,6 +63,9 @@ async function initDatabase() {
         CHECK (estado IN ('pendiente','pagado','vencido','anulado','en_revision'));
     `);
 
+    // Migracion: foto de perfil del alumno
+    await client.query(`ALTER TABLE alumnos ADD COLUMN IF NOT EXISTS foto_url TEXT;`);
+
     console.log('Base de datos PostgreSQL lista');
   } finally {
     client.release();

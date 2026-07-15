@@ -31,6 +31,7 @@ export interface Alumno {
   categoria_nombre?: string
   categoria_monto?: number
   monto_personalizado?: number | null
+  foto_url?: string | null
   es_becado: number | boolean
   porcentaje_beca: number
   estado: 'activo' | 'inactivo'
