@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import api, { fmt, MESES } from '../services/api'
+import api, { fmt, MESES, archivoUrl } from '../services/api'
 import toast from 'react-hot-toast'
 import { Upload, CheckCircle2, Clock, AlertTriangle, Building2 } from 'lucide-react'
 
@@ -145,26 +145,39 @@ export default function PagoPublicoPage() {
         <div className="card">
           <div className="flex items-center justify-between mb-3">
             <h3>Año {anioActual}</h3>
-            <p className="text-xs text-gray-400">Toca un mes destacado para pagar</p>
+            <p className="text-xs text-gray-400">Toca un mes para pagar o ver tu comprobante</p>
           </div>
           <div className="grid grid-cols-4 gap-2">
             {meses.map(({ mes, row, estado }) => {
               const clickable = estado === 'activo_actual' || estado === 'activo_vencido'
+              const verable = (estado === 'pagado' || estado === 'en_revision') && !!row?.comprobante_url
               const subiendo = row && subiendoId === row.id
+              const claseChip = `w-full aspect-square rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-semibold transition-colors ${estiloMes[estado]} ${verable ? 'cursor-pointer hover:brightness-95' : ''} ${!clickable && !verable ? 'cursor-default' : ''}`
+              const contenido = (
+                <>
+                  <span>{MESES[mes - 1].slice(0, 3)}</span>
+                  {estado === 'pagado' && <CheckCircle2 className="w-3.5 h-3.5" />}
+                  {estado === 'en_revision' && <Clock className="w-3.5 h-3.5" />}
+                  {estado === 'activo_actual' && (subiendo ? <span className="text-[10px]">...</span> : <Upload className="w-3.5 h-3.5" />)}
+                  {estado === 'activo_vencido' && (subiendo ? <span className="text-[10px]">...</span> : <AlertTriangle className="w-3.5 h-3.5" />)}
+                </>
+              )
               return (
                 <div key={mes}>
-                  <button
-                    type="button"
-                    disabled={!clickable || subiendo}
-                    onClick={() => clickable && row && fileInputs.current[row.id]?.click()}
-                    className={`w-full aspect-square rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-semibold transition-colors ${estiloMes[estado]} ${!clickable ? 'cursor-default' : ''}`}
-                  >
-                    <span>{MESES[mes - 1].slice(0, 3)}</span>
-                    {estado === 'pagado' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                    {estado === 'en_revision' && <Clock className="w-3.5 h-3.5" />}
-                    {estado === 'activo_actual' && (subiendo ? <span className="text-[10px]">...</span> : <Upload className="w-3.5 h-3.5" />)}
-                    {estado === 'activo_vencido' && (subiendo ? <span className="text-[10px]">...</span> : <AlertTriangle className="w-3.5 h-3.5" />)}
-                  </button>
+                  {verable && row ? (
+                    <a href={archivoUrl(row.comprobante_url)} target="_blank" rel="noreferrer" title="Ver comprobante" className={claseChip}>
+                      {contenido}
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={!clickable || subiendo}
+                      onClick={() => clickable && row && fileInputs.current[row.id]?.click()}
+                      className={claseChip}
+                    >
+                      {contenido}
+                    </button>
+                  )}
                   {row && clickable && (
                     <input
                       ref={el => { fileInputs.current[row.id] = el }}
