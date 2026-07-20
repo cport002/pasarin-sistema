@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import api, { fmt, MESES, archivoUrl } from '../services/api'
+import api, { fmt, MESES, archivoUrl, whatsappUrl } from '../services/api'
 import type { Alumno, Categoria, Mensualidad } from '../types'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Star, Edit2, CheckCircle2, XCircle, Upload, Paperclip, Link2, Camera } from 'lucide-react'
+import { ArrowLeft, Star, Edit2, CheckCircle2, XCircle, Upload, Paperclip, Link2, Camera, MessageCircle } from 'lucide-react'
 import PageHeader from '../components/ui/PageHeader'
 
 const estadoBadge: Record<string, string> = {
@@ -96,6 +96,20 @@ export default function AlumnoDetallePage() {
     }
   }
 
+  const enviarWhatsapp = () => {
+    if (!alumno?.token) return
+    if (!alumno.telefono) { toast.error('Este alumno no tiene teléfono registrado'); return }
+    const url = `${window.location.origin}/pago/${alumno.token}`
+    const pendientes = mensualidades.filter(m => m.estado === 'pendiente' || m.estado === 'vencido')
+    const totalPendiente = pendientes.reduce((s, m) => s + m.monto, 0)
+    let mensaje = `Hola! Te escribimos de CIA PASARIN.`
+    if (pendientes.length > 0) {
+      mensaje += ` Tienes ${pendientes.length} mensualidad${pendientes.length > 1 ? 'es' : ''} pendiente${pendientes.length > 1 ? 's' : ''} por ${fmt.clp(totalPendiente)}.`
+    }
+    mensaje += ` Puedes ver el detalle y pagar aquí: ${url}`
+    window.open(whatsappUrl(alumno.telefono, mensaje), '_blank')
+  }
+
   const anular = async (m: Mensualidad) => {
     if (!confirm(`¿Anular la mensualidad de ${MESES[m.periodo_mes - 1]} ${m.periodo_anio}?`)) return
     try {
@@ -154,6 +168,11 @@ export default function AlumnoDetallePage() {
             {puedeEditar && alumno.token && (
               <button onClick={copiarLinkPago} className="inline-flex items-center gap-2 bg-white/10 text-white font-semibold text-sm px-4 py-2 rounded-xl hover:bg-white/20 transition-colors">
                 <Link2 className="w-4 h-4" /> Copiar link de pago
+              </button>
+            )}
+            {puedeEditar && alumno.token && (
+              <button onClick={enviarWhatsapp} className="inline-flex items-center gap-2 bg-white/10 text-white font-semibold text-sm px-4 py-2 rounded-xl hover:bg-white/20 transition-colors">
+                <MessageCircle className="w-4 h-4" /> Enviar por WhatsApp
               </button>
             )}
             {puedeEditar && (

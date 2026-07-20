@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import api, { fmt } from '../services/api'
+import api, { fmt, whatsappUrl } from '../services/api'
 import type { Alumno, Categoria } from '../types'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
-import { Plus, Search, Users, ChevronRight, Star } from 'lucide-react'
+import { Plus, Search, Users, ChevronRight, Star, MessageCircle } from 'lucide-react'
 import PageHeader from '../components/ui/PageHeader'
 
 const estadoBadge: Record<string, string> = { activo: 'badge-green', inactivo: 'badge-gray' }
@@ -34,6 +34,15 @@ export default function AlumnosPage() {
   }
   useEffect(cargar, [filtroCategoria, filtroEstado, busqueda])
   useEffect(() => { api.get('/categorias').then(r => setCategorias(r.data)).catch(() => {}) }, [])
+
+  const enviarWhatsapp = (a: Alumno, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!a.telefono || !a.token) { toast.error('Este alumno no tiene teléfono registrado'); return }
+    const url = `${window.location.origin}/pago/${a.token}`
+    const mensaje = `Hola! Te escribimos de CIA PASARIN. Puedes ver el detalle de tu mensualidad y pagar aquí: ${url}`
+    window.open(whatsappUrl(a.telefono, mensaje), '_blank')
+  }
 
   const abrirNuevo = () => {
     setForm(FORM_INICIAL)
@@ -93,21 +102,28 @@ export default function AlumnosPage() {
       {/* Mobile: cards */}
       <div className="lg:hidden space-y-3">
         {alumnos.map(a => (
-          <Link key={a.id} to={`/alumnos/${a.id}`} className="card block p-4 hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-gray-900">{a.nombre} {a.apellido}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{a.categoria_nombre || 'Sin categoría'}</p>
+          <div key={a.id} className="card p-4 hover:shadow-md transition-shadow">
+            <Link to={`/alumnos/${a.id}`} className="block">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-gray-900">{a.nombre} {a.apellido}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{a.categoria_nombre || 'Sin categoría'}</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-300 flex-shrink-0 mt-1" />
               </div>
-              <ChevronRight className="w-5 h-5 text-gray-300 flex-shrink-0 mt-1" />
-            </div>
+            </Link>
             <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-gray-100">
               <div className="flex items-center gap-2">
                 {!!a.es_becado && <span className="badge-yellow flex items-center gap-1"><Star className="w-3 h-3" /> Becado {a.porcentaje_beca}%</span>}
+                <span className={estadoBadge[a.estado] || 'badge-gray'}>{a.estado}</span>
               </div>
-              <span className={estadoBadge[a.estado] || 'badge-gray'}>{a.estado}</span>
+              {a.telefono && (
+                <button onClick={e => enviarWhatsapp(a, e)} title="Enviar por WhatsApp" className="text-gray-400 hover:text-emerald-600 transition-colors">
+                  <MessageCircle className="w-4 h-4" />
+                </button>
+              )}
             </div>
-          </Link>
+          </div>
         ))}
         {alumnos.length === 0 && (
           <div className="card text-center py-12 text-gray-400">
@@ -144,9 +160,16 @@ export default function AlumnosPage() {
                   </td>
                   <td className="table-cell text-center"><span className={estadoBadge[a.estado] || 'badge-gray'}>{a.estado}</span></td>
                   <td className="table-cell">
-                    <Link to={`/alumnos/${a.id}`} className="text-gray-400 hover:text-primary-600 transition-colors">
-                      <ChevronRight className="w-5 h-5" />
-                    </Link>
+                    <div className="flex items-center justify-end gap-3">
+                      {a.telefono && (
+                        <button onClick={e => enviarWhatsapp(a, e)} title="Enviar por WhatsApp" className="text-gray-400 hover:text-emerald-600 transition-colors">
+                          <MessageCircle className="w-4 h-4" />
+                        </button>
+                      )}
+                      <Link to={`/alumnos/${a.id}`} className="text-gray-400 hover:text-primary-600 transition-colors">
+                        <ChevronRight className="w-5 h-5" />
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               )

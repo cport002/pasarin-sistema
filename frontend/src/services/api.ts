@@ -13,6 +13,11 @@ export function archivoUrl(path?: string | null) {
   return `${API_ORIGIN}${path}`
 }
 
+export function whatsappUrl(telefono: string, mensaje: string) {
+  const numero = telefono.replace(/\D/g, '')
+  return `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`
+}
+
 const api = axios.create({ baseURL: API_BASE })
 
 api.interceptors.request.use(config => {
