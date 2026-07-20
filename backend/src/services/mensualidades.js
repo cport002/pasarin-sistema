@@ -1,4 +1,6 @@
 const { sql } = require('../database/db');
+const { registrarAuditoria } = require('../middleware/auth');
+const { enviarCorreo, plantillaPagoConfirmado } = require('./email');
 
 async function obtenerConfig() {
   const r = await sql('SELECT clave, valor FROM configuracion');
@@ -64,4 +66,28 @@ async function actualizarVencidas() {
   return r.rows.map(row => row.id);
 }
 
-module.exports = { obtenerConfig, calcularMontoEfectivo, fechaVencimientoISO, generarMensualidadesPeriodo, actualizarVencidas };
+// Marca una mensualidad como pagada, registra auditoria y envia el correo de confirmacion.
+// Usado tanto por el endpoint manual (admin/secretaria) como por la confirmacion automatica de Khipu.
+async function confirmarPago(id, { metodoPago = 'transferencia', fechaPago = null, notas, usuarioId = null, ip = null, descripcion = 'Mensualidad marcada como pagada' } = {}) {
+  const anterior = (await sql(`
+    SELECT m.*, a.nombre AS alumno_nombre, a.apellido AS alumno_apellido, a.email AS alumno_email
+    FROM mensualidades m JOIN alumnos a ON a.id = m.alumno_id WHERE m.id = ?
+  `, [id])).rows[0];
+  if (!anterior) throw new Error('Mensualidad no encontrada');
+
+  await sql(
+    `UPDATE mensualidades SET estado = 'pagado', metodo_pago = ?, fecha_pago = COALESCE(?, CURRENT_DATE), notas = ?, updated_at = NOW() WHERE id = ?`,
+    [metodoPago, fechaPago, notas ?? anterior.notas, id]
+  );
+  registrarAuditoria('mensualidades', id, 'UPDATE', anterior, { estado: 'pagado', metodo_pago: metodoPago }, usuarioId, ip, descripcion);
+
+  if (anterior.alumno_email) {
+    const { subject, html } = plantillaPagoConfirmado({
+      alumnoNombre: `${anterior.alumno_nombre} ${anterior.alumno_apellido}`, mes: anterior.periodo_mes, anio: anterior.periodo_anio, monto: anterior.monto
+    });
+    enviarCorreo({ to: anterior.alumno_email, subject, html }).catch(() => {});
+  }
+  return anterior;
+}
+
+module.exports = { obtenerConfig, calcularMontoEfectivo, fechaVencimientoISO, generarMensualidadesPeriodo, actualizarVencidas, confirmarPago };

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import api, { fmt, MESES, archivoUrl } from '../services/api'
 import toast from 'react-hot-toast'
-import { Upload, CheckCircle2, Clock, AlertTriangle, Building2 } from 'lucide-react'
+import { Upload, CheckCircle2, Clock, AlertTriangle, Building2, CreditCard, X } from 'lucide-react'
 
 interface Mensualidad {
   id: number
@@ -42,6 +42,8 @@ export default function PagoPublicoPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [subiendoId, setSubiendoId] = useState<number | null>(null)
+  const [mesSeleccionado, setMesSeleccionado] = useState<Mensualidad | null>(null)
+  const [pagandoKhipu, setPagandoKhipu] = useState(false)
   const fileInputs = useRef<Record<number, HTMLInputElement | null>>({})
 
   const cargar = () => {
@@ -73,6 +75,18 @@ export default function PagoPublicoPage() {
       toast.error(err.response?.data?.error || 'Error al subir el comprobante')
     } finally {
       setSubiendoId(null)
+    }
+  }
+
+  const pagarConKhipu = async () => {
+    if (!mesSeleccionado) return
+    setPagandoKhipu(true)
+    try {
+      const r = await api.post(`/public/alumno/${token}/mensualidad/${mesSeleccionado.id}/pagar-khipu`)
+      window.location.href = r.data.payment_url
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'No se pudo iniciar el pago con Khipu')
+      setPagandoKhipu(false)
     }
   }
 
@@ -172,7 +186,7 @@ export default function PagoPublicoPage() {
                     <button
                       type="button"
                       disabled={!clickable || subiendo}
-                      onClick={() => clickable && row && fileInputs.current[row.id]?.click()}
+                      onClick={() => clickable && row && setMesSeleccionado(row)}
                       className={claseChip}
                     >
                       {contenido}
@@ -216,6 +230,41 @@ export default function PagoPublicoPage() {
 
         <p className="text-center text-xs text-gray-400">Cualquier duda, contacta directamente a la academia.</p>
       </div>
+
+      {mesSeleccionado && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 relative">
+            <button onClick={() => setMesSeleccionado(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="mb-1">{MESES[mesSeleccionado.periodo_mes - 1]} {mesSeleccionado.periodo_anio}</h2>
+            <p className="text-2xl font-bold text-gray-900 mb-5">{fmt.clp(mesSeleccionado.monto)}</p>
+
+            <button
+              onClick={pagarConKhipu}
+              disabled={pagandoKhipu}
+              className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <CreditCard className="w-4 h-4" />
+              {pagandoKhipu ? 'Redirigiendo...' : 'Pagar con tarjeta o transferencia (Khipu)'}
+            </button>
+
+            <div className="flex items-center gap-2 my-4">
+              <div className="h-px bg-gray-200 flex-1" />
+              <span className="text-xs text-gray-400">o</span>
+              <div className="h-px bg-gray-200 flex-1" />
+            </div>
+
+            <button
+              onClick={() => { const id = mesSeleccionado.id; setMesSeleccionado(null); fileInputs.current[id]?.click() }}
+              className="btn-secondary w-full flex items-center justify-center gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              Ya transferí — subir comprobante
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

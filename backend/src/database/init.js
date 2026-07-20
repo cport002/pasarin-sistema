@@ -66,6 +66,14 @@ async function initDatabase() {
     // Migracion: foto de perfil del alumno
     await client.query(`ALTER TABLE alumnos ADD COLUMN IF NOT EXISTS foto_url TEXT;`);
 
+    // Migracion: pago con Khipu (tarjeta/transferencia instantanea)
+    await client.query(`ALTER TABLE mensualidades ADD COLUMN IF NOT EXISTS khipu_payment_id TEXT;`);
+    await client.query(`
+      ALTER TABLE mensualidades DROP CONSTRAINT IF EXISTS mensualidades_metodo_pago_check;
+      ALTER TABLE mensualidades ADD CONSTRAINT mensualidades_metodo_pago_check
+        CHECK (metodo_pago IN ('transferencia','efectivo','khipu'));
+    `);
+
     console.log('Base de datos PostgreSQL lista');
   } finally {
     client.release();

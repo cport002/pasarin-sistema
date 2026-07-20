@@ -1,9 +1,9 @@
 const express = require('express');
 const { sql } = require('../database/db');
 const { autenticar, autorizar, registrarAuditoria } = require('../middleware/auth');
-const { generarMensualidadesPeriodo, actualizarVencidas } = require('../services/mensualidades');
+const { generarMensualidadesPeriodo, actualizarVencidas, confirmarPago } = require('../services/mensualidades');
 const { ejecutarJobDiario } = require('../services/alertas');
-const { enviarCorreo, plantillaComprobanteRecibido, plantillaPagoConfirmado } = require('../services/email');
+const { enviarCorreo, plantillaComprobanteRecibido } = require('../services/email');
 const { upload } = require('../services/upload');
 
 const router = express.Router();
@@ -108,27 +108,16 @@ router.post('/test-email', autenticar, autorizar('admin'), async (req, res) => {
 // PATCH /api/mensualidades/:id/pagar  { metodo_pago, fecha_pago, notas }
 router.patch('/:id/pagar', autenticar, autorizar('admin', 'secretaria'), async (req, res) => {
   try {
-    const anterior = (await sql(`
-      SELECT m.*, a.nombre AS alumno_nombre, a.apellido AS alumno_apellido, a.email AS alumno_email
-      FROM mensualidades m JOIN alumnos a ON a.id = m.alumno_id WHERE m.id = ?
-    `, [req.params.id])).rows[0];
-    if (!anterior) return res.status(404).json({ error: 'Mensualidad no encontrada' });
-
     const { metodo_pago, fecha_pago, notas } = req.body;
-    await sql(
-      `UPDATE mensualidades SET estado = 'pagado', metodo_pago = ?, fecha_pago = COALESCE(?, CURRENT_DATE), notas = ?, updated_at = NOW() WHERE id = ?`,
-      [metodo_pago || 'transferencia', fecha_pago || null, notas ?? anterior.notas, req.params.id]
-    );
-    registrarAuditoria('mensualidades', req.params.id, 'UPDATE', anterior, { estado: 'pagado', metodo_pago }, req.usuario.id, req.ip, 'Mensualidad marcada como pagada');
-
-    if (anterior.alumno_email) {
-      const { subject, html } = plantillaPagoConfirmado({
-        alumnoNombre: `${anterior.alumno_nombre} ${anterior.alumno_apellido}`, mes: anterior.periodo_mes, anio: anterior.periodo_anio, monto: anterior.monto
-      });
-      enviarCorreo({ to: anterior.alumno_email, subject, html }).catch(() => {});
-    }
+    await confirmarPago(req.params.id, {
+      metodoPago: metodo_pago || 'transferencia', fechaPago: fecha_pago || null, notas,
+      usuarioId: req.usuario.id, ip: req.ip, descripcion: 'Mensualidad marcada como pagada'
+    });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    if (e.message === 'Mensualidad no encontrada') return res.status(404).json({ error: e.message });
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // PATCH /api/mensualidades/:id/anular
